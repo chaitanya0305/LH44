@@ -1,7 +1,7 @@
 import requests
 import os
 from datetime import datetime
-import PyPDF2
+import textract
 
 def download_and_process_pdfs(pdf_links, output_folder):
     visited_links = set()
@@ -22,21 +22,16 @@ def download_and_process_pdfs(pdf_links, output_folder):
 
     def extract_text_and_download(pdf_path, count):
         try:
-            with open(pdf_path, 'rb') as pdf_file:
-                pdf_reader = PyPDF2.PdfReader(pdf_file)
-                text = ''
-                for page_num in range(len(pdf_reader.pages)):
-                    text += pdf_reader.getPage(page_num).extractText()
-
-                if 'Scope Of Work' in text and 'applicable minimum wages act' in text:
-                    download_folder = os.path.join(output_folder, 'applicable_minimum_wages_act')
-                    os.makedirs(download_folder, exist_ok=True)
-                    download_path = os.path.join(download_folder, f"{count}.pdf")
-                    os.rename(pdf_path, download_path)
-                    print(f"Downloaded PDF {count} with applicable minimum wages act: {download_path}")
-                else:
-                    os.remove(pdf_path)
-                    print(f"PDF {count} does not meet criteria. Deleted.")
+            text = textract.process(pdf_path).decode('utf-8')
+            if 'Scope Of Work' in text and 'applicable minimum wages act' in text:
+                download_folder = os.path.join(output_folder, 'applicable_minimum_wages_act')
+                os.makedirs(download_folder, exist_ok=True)
+                download_path = os.path.join(download_folder, f"{count}.pdf")
+                os.rename(pdf_path, download_path)
+                print(f"Downloaded PDF {count} with applicable minimum wages act: {download_path}")
+            else:
+                os.remove(pdf_path)
+                print(f"PDF {count} does not meet criteria. Deleted.")
 
         except Exception as e:
             print(f"Error processing PDF {count}: {e}")
