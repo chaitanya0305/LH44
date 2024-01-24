@@ -20,7 +20,7 @@ def download_and_process_pdfs(pdf_links, output_folder):
         except Exception as e:
             print(f"Error downloading PDF {count}: {e}")
 
-    def extract_text_and_download(pdf_path, count):
+    def extract_text_and_move(pdf_path, count):
         try:
             text = textract.process(pdf_path).decode('utf-8')
             if 'Scope Of Work' in text and 'applicable minimum wages act' in text:
@@ -28,10 +28,9 @@ def download_and_process_pdfs(pdf_links, output_folder):
                 os.makedirs(download_folder, exist_ok=True)
                 download_path = os.path.join(download_folder, f"{count}.pdf")
                 os.rename(pdf_path, download_path)
-                print(f"Downloaded PDF {count} with applicable minimum wages act: {download_path}")
+                print(f"Moved PDF {count} with applicable minimum wages act to: {download_path}")
             else:
-                os.remove(pdf_path)
-                print(f"PDF {count} does not meet criteria. Deleted.")
+                print(f"PDF {count} does not meet criteria. Leaving in original folder.")
 
         except Exception as e:
             print(f"Error processing PDF {count}: {e}")
@@ -43,7 +42,7 @@ def download_and_process_pdfs(pdf_links, output_folder):
     for i, link in enumerate(pdf_links, start=1):
         pdf_path = download_pdf(link, today_folder, i)
         if pdf_path:
-            extract_text_and_download(pdf_path, i)
+            extract_text_and_move(pdf_path, i)
 
 if __name__ == "__main__":
     # Read PDF links from the text file
