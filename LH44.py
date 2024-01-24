@@ -1,7 +1,7 @@
 import requests
 import os
+import re
 from datetime import datetime
-import textract
 
 def download_and_process_pdfs(pdf_links, output_folder):
     visited_links = set()
@@ -20,17 +20,29 @@ def download_and_process_pdfs(pdf_links, output_folder):
         except Exception as e:
             print(f"Error downloading PDF {count}: {e}")
 
-    def extract_text_and_move(pdf_path, count):
+    def extract_hyperlinks_and_download(pdf_path, count):
         try:
-            text = textract.process(pdf_path).decode('utf-8')
-            if 'Scope Of Work' in text and 'applicable minimum wages act' in text:
-                download_folder = os.path.join(output_folder, 'applicable_minimum_wages_act')
-                os.makedirs(download_folder, exist_ok=True)
-                download_path = os.path.join(download_folder, f"{count}.pdf")
-                os.rename(pdf_path, download_path)
-                print(f"Moved PDF {count} with applicable minimum wages act to: {download_path}")
-            else:
-                print(f"PDF {count} does not meet criteria. Keeping in original folder.")
+            with open(pdf_path, 'rb') as pdf_file:
+                pdf_content = pdf_file.read().decode('latin-1')
+                urls = re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', pdf_content)
+                
+                for url in urls:
+                    if url not in visited_links:
+                        visited_links.add(url)
+                        pdf_links.append(url)
+                        print(f"Found additional PDF link in PDF {count}: {url}")
+
+                        # Download the linked PDF
+                        download_folder = os.path.join(output_folder, 'linked_pdfs')
+                        os.makedirs(download_folder, exist_ok=True)
+                        linked_pdf_name = os.path.join(download_folder, f"{count}_linked.pdf")
+                        response_linked = requests.get(url)
+                        if response_linked.status_code == 200:
+                            with open(linked_pdf_name, 'wb') as linked_pdf_file:
+                                linked_pdf_file.write(response_linked.content)
+                            print(f"Downloaded linked PDF from {url} to: {linked_pdf_name}")
+                        else:
+                            print(f"Failed to download linked PDF from {url}. Status Code: {response_linked.status_code}")
 
         except Exception as e:
             print(f"Error processing PDF {count}: {e}")
@@ -42,7 +54,7 @@ def download_and_process_pdfs(pdf_links, output_folder):
     for i, link in enumerate(pdf_links, start=1):
         pdf_path = download_pdf(link, today_folder, i)
         if pdf_path:
-            extract_text_and_move(pdf_path, i)
+            extract_hyperlinks_and_download(pdf_path, i)
 
 if __name__ == "__main__":
     # Read PDF links from the text file
