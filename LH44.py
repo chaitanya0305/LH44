@@ -1,7 +1,7 @@
 import requests
 import os
 from datetime import datetime
-import fitz  # PyMuPDF
+import PyPDF2
 
 def download_and_process_pdfs(pdf_links, output_folder):
     visited_links = set()
@@ -10,7 +10,7 @@ def download_and_process_pdfs(pdf_links, output_folder):
         try:
             response = requests.get(link)
             if response.status_code == 200:
-                pdf_name = os.path.join(folder, f"pdf_{count}.pdf")
+                pdf_name = os.path.join(folder, f"{count}.pdf")
                 with open(pdf_name, 'wb') as pdf_file:
                     pdf_file.write(response.content)
                 print(f"Downloaded PDF {count}: {pdf_name}")
@@ -20,18 +20,23 @@ def download_and_process_pdfs(pdf_links, output_folder):
         except Exception as e:
             print(f"Error downloading PDF {count}: {e}")
 
-    def process_pdf(pdf_path, count):
+    def extract_text_and_download(pdf_path, count):
         try:
-            doc = fitz.open(pdf_path)
-            for page_num in range(doc.page_count):
-                page = doc[page_num]
-                links = page.get_links()
-                for link in links:
-                    url = link.get('uri')
-                    if url and url not in visited_links:
-                        visited_links.add(url)
-                        pdf_links.append(url)
-                        print(f"Found additional PDF link in PDF {count}: {url}")
+            with open(pdf_path, 'rb') as pdf_file:
+                pdf_reader = PyPDF2.PdfReader(pdf_file)
+                text = ''
+                for page_num in range(len(pdf_reader.pages)):
+                    text += pdf_reader.getPage(page_num).extractText()
+
+                if 'Scope Of Work' in text and 'applicable minimum wages act' in text:
+                    download_folder = os.path.join(output_folder, 'applicable_minimum_wages_act')
+                    os.makedirs(download_folder, exist_ok=True)
+                    download_path = os.path.join(download_folder, f"{count}.pdf")
+                    os.rename(pdf_path, download_path)
+                    print(f"Downloaded PDF {count} with applicable minimum wages act: {download_path}")
+                else:
+                    os.remove(pdf_path)
+                    print(f"PDF {count} does not meet criteria. Deleted.")
 
         except Exception as e:
             print(f"Error processing PDF {count}: {e}")
@@ -43,7 +48,7 @@ def download_and_process_pdfs(pdf_links, output_folder):
     for i, link in enumerate(pdf_links, start=1):
         pdf_path = download_pdf(link, today_folder, i)
         if pdf_path:
-            process_pdf(pdf_path, i)
+            extract_text_and_download(pdf_path, i)
 
 if __name__ == "__main__":
     # Read PDF links from the text file
