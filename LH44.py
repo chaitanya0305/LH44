@@ -30,7 +30,7 @@ def download_and_process_pdfs(pdf_links, output_folder):
                 os.rename(pdf_path, download_path)
                 print(f"Moved PDF {count} with applicable minimum wages act to: {download_path}")
             else:
-                print(f"PDF {count} does not meet criteria. Leaving in original folder.")
+                print(f"PDF {count} does not meet criteria. Keeping in original folder.")
 
         except Exception as e:
             print(f"Error processing PDF {count}: {e}")
